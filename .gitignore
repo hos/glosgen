@@ -16,3 +16,4 @@ out-*
 Pipfile.lock
 *.aux
 *.tex
+out*
