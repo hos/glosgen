@@ -7,6 +7,7 @@ from wiktionaryparser import WiktionaryParser
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import json
+import unicodedata
 # import re
 
 
@@ -19,6 +20,14 @@ parser.add_argument('--dont-scrape', action='store_true', help='Don\'t scrape, j
 group = parser.add_mutually_exclusive_group()
 group.add_argument('--limit-total', type=int, help='Total number of words to be scraped')
 group.add_argument('--limit-count', type=int, help='Minimum number of occurences of words to be scraped')
+
+def isEnglish(s):
+    try:
+        s.encode(encoding='utf-8').decode('ascii')
+    except UnicodeDecodeError:
+        return False
+    else:
+        return True
 
 def extract_words(text):
     # words = re.compile(r"a-zA-Z'").findall(text)
@@ -37,6 +46,11 @@ def filter_words(words, stop_words):
     result = []
 
     for w in words:
+        try:
+            w = unicodedata.normalize('NFKD', w)
+        except:
+            pass
+
         if w in stop_words:
             continue
         elif len(w) < 2:
