@@ -21,6 +21,7 @@ setup(
     setup_requires = [
         'nltk',
         'wiktionaryparser',
+        'inflect',
         # 'ruamel.yaml',
     ],
 

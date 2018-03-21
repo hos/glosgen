@@ -9,7 +9,7 @@ from nltk.tokenize import word_tokenize
 import json
 import unicodedata
 # import re
-
+import inflect
 
 parser = argparse.ArgumentParser()
 parser.add_argument('input', type=str, help='Input text file')
@@ -21,13 +21,18 @@ group = parser.add_mutually_exclusive_group()
 group.add_argument('--limit-total', type=int, help='Total number of words to be scraped')
 group.add_argument('--limit-count', type=int, help='Minimum number of occurences of words to be scraped')
 
-def isEnglish(s):
+inflect_engine = inflect.engine()
+
+def is_english(s):
     try:
         s.encode(encoding='utf-8').decode('ascii')
     except UnicodeDecodeError:
         return False
     else:
         return True
+
+def is_plural(word):
+    return len(inflect_engine.plural(word)) < len(word)
 
 def extract_words(text):
     # words = re.compile(r"a-zA-Z'").findall(text)
@@ -63,6 +68,20 @@ def filter_words(words, stop_words):
 def get_word_counts(words):
     counts = collections.Counter(words)
     return counts
+
+def check_wiki_result_for_plural(wiki_result):
+    for entry in wiki_result:
+        if not 'definitions' in entry: continue
+        for defn in entry['definitions']:
+            if not 'text' in defn: continue
+            if 'plural of' in defn['text']:
+                text = defn['text']
+                text = text.replace('plural of', 'PLURALPLACEHOLDER')
+                tokens = word_tokenize(text)
+                for token1, token2 in zip(tokens, tokens[1:]):
+                    if token1 == 'PLURALPLACEHOLDER':
+                        return token2
+    return None
 
 def __main__():
     args = parser.parse_args()
@@ -111,6 +130,14 @@ def __main__():
             wiktionary_result = wiki_parser.fetch(word.lower())
             result['wiktionary'] = wiktionary_result
 
+            singular = check_wiki_result_for_plural(wiktionary_result)
+
+            if singular:
+                time.sleep(args.delay)
+                singular_result = wiki_parser.fetch(singular)
+                if singular_result:
+                    result_list.append({'word':singular, 'count':count, 'wiktionary':singular_result})
+
         result_list.append(result)
 
         result_json = json.dumps(result_list, indent=1)
@@ -123,7 +150,7 @@ def __main__():
         if not args.dont_scrape:
             time.sleep(args.delay)
 
-
+        # TODO: merge duplicate entries in result_list
 
 if __name__ == '__main__':
     __main__()
